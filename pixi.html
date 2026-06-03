@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pixi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #fafaf9;
+      --surface: #ffffff;
+      --border: #e8e8e5;
+      --text: #1a1a1a;
+      --text-muted: #8a8a8a;
+      --accent: #1a1a1a;
+      --accent-fg: #ffffff;
+      --bubble-user: #1a1a1a;
+      --bubble-user-fg: #ffffff;
+      --bubble-bot: #f2f2f0;
+      --bubble-bot-fg: #1a1a1a;
+      --radius: 18px;
+      --input-radius: 14px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 28px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .logo {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .logo span {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background: #22c55e;
+      border-radius: 50%;
+      margin-left: 6px;
+      margin-bottom: 1px;
+      vertical-align: middle;
+    }
+
+    .header-right {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    /* ── Chat area ── */
+    .chat-wrap {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 0;
+      scroll-behavior: smooth;
+    }
+
+    .chat-wrap::-webkit-scrollbar { width: 4px; }
+    .chat-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .messages {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    /* ── Intro card ── */
+    .intro {
+      text-align: center;
+      padding: 48px 24px 32px;
+    }
+
+    .intro-icon {
+      width: 52px;
+      height: 52px;
+      background: var(--accent);
+      border-radius: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .intro-icon svg { color: white; }
+
+    .intro h2 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+
+    .intro p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      max-width: 320px;
+      margin: 0 auto 24px;
+    }
+
+    .suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .suggestion-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 8px 16px;
+      font-size: 0.82rem;
+      font-family: inherit;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .suggestion-btn:hover {
+      background: var(--accent);
+      color: var(--accent-fg);
+      border-color: var(--accent);
+    }
+
+    /* ── Message bubbles ── */
+    .message {
+      display: flex;
+      flex-direction: column;
+      max-width: 78%;
+    }
+
+    .message.user { align-self: flex-end; align-items: flex-end; }
+    .message.bot  { align-self: flex-start; align-items: flex-start; }
+
+    .bubble {
+      padding: 11px 16px;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .message.user .bubble {
+      background: var(--bubble-user);
+      color: var(--bubble-user-fg);
+      border-bottom-right-radius: 5px;
+    }
+
+    .message.bot .bubble {
+      background: var(--bubble-bot);
+      color: var(--bubble-bot-fg);
+      border-bottom-left-radius: 5px;
+    }
+
+    .msg-time {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+      padding: 0 4px;
+    }
+
+    /* ── Order confirmation badge ── */
+    .order-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-top: 6px;
+      font-size: 0.82rem;
+      color: #166534;
+    }
+
+    .order-badge svg { flex-shrink: 0; }
+
+    /* ── Typing indicator ── */
+    .typing {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 12px 16px;
+      background: var(--bubble-bot);
+      border-radius: var(--radius);
+      border-bottom-left-radius: 5px;
+      width: fit-content;
+    }
+
+    .typing span {
+      width: 6px;
+      height: 6px;
+      background: #aaa;
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+
+    .typing span:nth-child(2) { animation-delay: 0.2s; }
+    .typing span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40%            { transform: translateY(-5px); opacity: 1; }
+    }
+
+    /* ── Input bar ── */
+    .input-bar {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 16px 20px;
+      flex-shrink: 0;
+    }
+
+    .input-inner {
+      max-width: 680px;
+      margin: 0 auto;
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    textarea {
+      flex: 1;
+      resize: none;
+      border: 1px solid var(--border);
+      border-radius: var(--input-radius);
+      padding: 11px 15px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.5;
+      max-height: 120px;
+      outline: none;
+      transition: border-color 0.15s;
+      overflow-y: auto;
+    }
+
+    textarea:focus { border-color: #bbb; }
+    textarea::placeholder { color: var(--text-muted); }
+
+    .send-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: var(--accent);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: opacity 0.15s;
+    }
+
+    .send-btn:hover { opacity: 0.85; }
+    .send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ── API config bar ── */
+    .config-bar {
+      background: #fffbeb;
+      border-bottom: 1px solid #fde68a;
+      padding: 10px 28px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.8rem;
+      color: #92400e;
+      flex-shrink: 0;
+    }
+
+    .config-bar input {
+      flex: 1;
+      max-width: 480px;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 0.8rem;
+      font-family: monospace;
+      background: white;
+      color: var(--text);
+      outline: none;
+    }
+
+    .config-bar button {
+      background: #92400e;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 5px 12px;
+      font-size: 0.78rem;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .config-bar.hidden { display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- API endpoint config (shown until URL is saved) -->
+  <div class="config-bar" id="configBar">
+    <span>⚠ Paste your API endpoint:</span>
+    <input type="text" id="apiInput" placeholder="https://xxxx.execute-api.us-east-1.amazonaws.com/chat" />
+    <button onclick="saveApi()">Save</button>
+  </div>
+
+  <header>
+    <div class="logo">Pixi <span></span></div>
+    <div class="header-right">Your personal shopping assistant</div>
+  </header>
+
+  <div class="chat-wrap" id="chatWrap">
+    <div class="messages" id="messages">
+      <div class="intro" id="intro">
+        <div class="intro-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/>
+          </svg>
+        </div>
+        <h2>Hi, I'm your Pixi assistant.</h2>
+        <p>Ask me anything about our products, and I'll help you find exactly what you need.</p>
+        <div class="suggestions">
+          <button class="suggestion-btn" onclick="suggest(this)">What's under $30?</button>
+          <button class="suggestion-btn" onclick="suggest(this)">Show me fitness gear</button>
+          <button class="suggestion-btn" onclick="suggest(this)">Best electronics deals</button>
+          <button class="suggestion-btn" onclick="suggest(this)">I need a gift idea</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="input-bar">
+    <div class="input-inner">
+      <textarea
+        id="msgInput"
+        rows="1"
+        placeholder="Ask about products or place an order…"
+        onkeydown="handleKey(event)"
+        oninput="autoResize(this)"
+      ></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    let history = [];
+    let apiUrl = localStorage.getItem('pixi_api_url') || '';
+
+    // Hide config bar if URL already saved
+    if (apiUrl) document.getElementById('configBar').classList.add('hidden');
+
+    function saveApi() {
+      const val = document.getElementById('apiInput').value.trim();
+      if (!val) return;
+      apiUrl = val;
+      localStorage.setItem('pixi_api_url', apiUrl);
+      document.getElementById('configBar').classList.add('hidden');
+    }
+
+    function autoResize(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    }
+
+    function handleKey(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    }
+
+    function suggest(btn) {
+      document.getElementById('msgInput').value = btn.textContent;
+      sendMessage();
+    }
+
+    function now() {
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function appendMessage(role, text, orderResult) {
+      const intro = document.getElementById('intro');
+      if (intro) intro.remove();
+
+      const wrap = document.getElementById('messages');
+
+      const msg = document.createElement('div');
+      msg.className = `message ${role}`;
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+      msg.appendChild(bubble);
+
+      if (orderResult && orderResult.success) {
+        const badge = document.createElement('div');
+        badge.className = 'order-badge';
+        badge.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Order #${orderResult.order_id} confirmed · $${orderResult.total.toFixed(2)}
+        `;
+        msg.appendChild(badge);
+      }
+
+      const time = document.createElement('div');
+      time.className = 'msg-time';
+      time.textContent = now();
+      msg.appendChild(time);
+
+      wrap.appendChild(msg);
+      scrollDown();
+      return msg;
+    }
+
+    function showTyping() {
+      const wrap = document.getElementById('messages');
+      const el = document.createElement('div');
+      el.className = 'message bot';
+      el.id = 'typingIndicator';
+      el.innerHTML = `<div class="typing"><span></span><span></span><span></span></div>`;
+      wrap.appendChild(el);
+      scrollDown();
+    }
+
+    function hideTyping() {
+      const el = document.getElementById('typingIndicator');
+      if (el) el.remove();
+    }
+
+    function scrollDown() {
+      const wrap = document.getElementById('chatWrap');
+      wrap.scrollTop = wrap.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('msgInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      if (!apiUrl) {
+        alert('Please paste your API endpoint URL at the top first.');
+        return;
+      }
+
+      // Clear input
+      input.value = '';
+      input.style.height = 'auto';
+      document.getElementById('sendBtn').disabled = true;
+
+      appendMessage('user', text);
+      showTyping();
+
+      try {
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text, history })
+        });
+
+        const data = await res.json();
+        hideTyping();
+
+        const reply = data.reply || 'Sorry, something went wrong.';
+        history = data.history || history;
+
+        appendMessage('bot', reply, data.order_result);
+      } catch (err) {
+        hideTyping();
+        appendMessage('bot', 'Couldn\'t reach the server. Check your API URL and make sure the chatbot is deployed.');
+      }
+
+      document.getElementById('sendBtn').disabled = false;
+      input.focus();
+    }
+  </script>
+</body>
+</html>
