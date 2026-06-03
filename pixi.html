@@ -326,8 +326,8 @@
 </head>
 <body>
 
-  <!-- API endpoint config (shown until URL is saved) -->
-  <div class="config-bar" id="configBar">
+  <!-- API endpoint config (hidden - URL is hardcoded) -->
+  <div class="config-bar hidden" id="configBar">
     <span>⚠ Paste your API endpoint:</span>
     <input type="text" id="apiInput" placeholder="https://xxxx.execute-api.us-east-1.amazonaws.com/chat" />
     <button onclick="saveApi()">Save</button>
@@ -377,10 +377,7 @@
 
   <script>
     let history = [];
-    let apiUrl = localStorage.getItem('pixi_api_url') || '';
-
-    // Hide config bar if URL already saved
-    if (apiUrl) document.getElementById('configBar').classList.add('hidden');
+    let apiUrl = 'https://wh6x65stti.execute-api.us-east-1.amazonaws.com/chat';
 
     function saveApi() {
       const val = document.getElementById('apiInput').value.trim();
