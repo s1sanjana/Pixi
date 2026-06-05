@@ -15,10 +15,12 @@ import anthropic
 # ── AWS clients ────────────────────────────────────────────────────────────────
 dynamodb = boto3.resource("dynamodb")
 sns = boto3.client("sns")
+ses = boto3.client("ses", region_name="us-east-1")
 
-ORDERS_TABLE = os.environ["ORDERS_TABLE"]
-SNS_TOPIC_ARN = os.environ["SNS_TOPIC_ARN"]
+ORDERS_TABLE      = os.environ["ORDERS_TABLE"]
+SNS_TOPIC_ARN     = os.environ["SNS_TOPIC_ARN"]
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
+SENDER_EMAIL      = os.environ["SENDER_EMAIL"]
 
 # ── Product catalogue (50+ SKUs) ───────────────────────────────────────────────
 PRODUCTS = {
@@ -134,15 +136,46 @@ def place_order(customer_name: str, customer_email: str, product_id: str, quanti
         "status":         "confirmed",
     })
 
-    # Publish SNS notification
-    message = (
+    # Publish SNS notification (admin)
+    admin_message = (
         f"New Order #{order_id}\n"
         f"Customer: {customer_name} <{customer_email}>\n"
         f"Product:  {product['name']} (x{quantity})\n"
         f"Total:    ${total:.2f}\n"
         f"Time:     {timestamp}"
     )
-    sns.publish(TopicArn=SNS_TOPIC_ARN, Subject=f"Order #{order_id} Confirmed", Message=message)
+    sns.publish(TopicArn=SNS_TOPIC_ARN, Subject=f"Order #{order_id} Confirmed", Message=admin_message)
+
+    # Send confirmation email to customer via SES
+    customer_html = f"""
+    <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;color:#1a1a1a">
+      <h2 style="font-size:1.3rem;margin-bottom:4px">Thanks for your order, {customer_name.split()[0]}!</h2>
+      <p style="color:#666;font-size:0.9rem;margin-bottom:24px">Here's your order summary.</p>
+      <div style="background:#f9f9f7;border-radius:12px;padding:20px;margin-bottom:24px">
+        <p style="margin:0 0 8px"><strong>Order ID:</strong> #{order_id}</p>
+        <p style="margin:0 0 8px"><strong>Product:</strong> {product['name']}</p>
+        <p style="margin:0 0 8px"><strong>Quantity:</strong> {quantity}</p>
+        <p style="margin:0"><strong>Total:</strong> ${total:.2f}</p>
+      </div>
+      <p style="color:#666;font-size:0.82rem">We'll be in touch with shipping details soon.</p>
+      <p style="color:#aaa;font-size:0.78rem;margin-top:32px">Pixi &mdash; Your personal shopping assistant</p>
+    </div>
+    """
+    try:
+        response = ses.send_email(
+            Source=SENDER_EMAIL,
+            Destination={"ToAddresses": [customer_email]},
+            Message={
+                "Subject": {"Data": f"Your Pixi Order #{order_id} is confirmed!"},
+                "Body": {
+                    "Html": {"Data": customer_html},
+                    "Text": {"Data": f"Thanks {customer_name}! Your order #{order_id} for {product['name']} (x{quantity}) totalling ${total:.2f} is confirmed."},
+                },
+            },
+        )
+        print(f"SES email sent successfully. MessageId: {response['MessageId']} To: {customer_email}")
+    except Exception as e:
+        print(f"SES email failed: {e}")  # don't block the order if email fails
 
     return {"success": True, "order_id": order_id, "total": total}
 

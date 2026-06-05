@@ -37,6 +37,11 @@ variable "admin_email" {
   type        = string
 }
 
+variable "sender_email" {
+  description = "Verified SES email address used to send order confirmations to customers"
+  type        = string
+}
+
 ###############################################################################
 # DynamoDB — Orders Table
 ###############################################################################
@@ -111,6 +116,12 @@ resource "aws_iam_role_policy" "lambda_policy" {
         Effect   = "Allow"
         Action   = ["sns:Publish"]
         Resource = aws_sns_topic.order_notifications.arn
+      },
+      {
+        # SES send email
+        Effect   = "Allow"
+        Action   = ["ses:SendEmail", "ses:SendRawEmail"]
+        Resource = "*"
       }
     ]
   })
@@ -142,6 +153,7 @@ resource "aws_lambda_function" "chatbot" {
       ORDERS_TABLE      = aws_dynamodb_table.orders.name
       SNS_TOPIC_ARN     = aws_sns_topic.order_notifications.arn
       ANTHROPIC_API_KEY = var.anthropic_api_key
+      SENDER_EMAIL      = var.sender_email
     }
   }
 
